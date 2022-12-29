@@ -62,6 +62,11 @@ on:
             #     required: true
             #     default: false
             #     type: boolean
+            # skip_download_wsa:
+            #     description: Skip WSA Download
+            #     required: true
+            #     default: false
+            #     type: boolean
             compression:
                 description: "Compression Algorithm"
                 required: true
@@ -103,8 +108,9 @@ jobs:
               run: |
                   DOWNLOAD_DIR=../download
                   DOWNLOAD_CONF_NAME=download.list
+                  mkdir -p "$DOWNLOAD_DIR"
 
-                  declare -A opts=( ["ARCH,x86_64"]="x64" ["ARCH,ARM64"]="arm64" ["RELEASE_TYPE,General Availability Channel"]="retail" ["RELEASE_TYPE,Release Preview Channel"]="RP" ["RELEASE_TYPE,Beta Channel"]="WIS" ["RELEASE_TYPE,Dev Channel"]="WIF" ["MAGISK_VER,Stable"]="stable" ["MAGISK_VER,Beta"]="beta" ["MAGISK_VER,Canary"]="canary" ["MAGISK_VER,Debug"]="debug" ["MAGISK_VER,Custom"]="--magisk-custom" ["GAPPS_VAR,None"]="none" ["GAPPS_VAR,Pico"]="pico" ["GAPPS_VAR,Full"]="full" ["REMOVE_AMAZON,true"]="--remove-amazon" ["NOFIX_PROPS,true"]="--nofix-props" ["COMPRESSION,ZIP"]="zip" ["COMPRESSION,7-Zip"]="7z" ["COMPRESSION,XZ"]="xz" )
+                  declare -A opts=( ["ARCH,x86_64"]="x64" ["ARCH,ARM64"]="arm64" ["RELEASE_TYPE,General Availability Channel"]="retail" ["RELEASE_TYPE,Release Preview Channel"]="RP" ["RELEASE_TYPE,Beta Channel"]="WIS" ["RELEASE_TYPE,Dev Channel"]="WIF" ["MAGISK_VER,Stable"]="stable" ["MAGISK_VER,Beta"]="beta" ["MAGISK_VER,Canary"]="canary" ["MAGISK_VER,Debug"]="debug" ["MAGISK_VER,Custom"]="--magisk-custom" ["GAPPS_VAR,None"]="none" ["GAPPS_VAR,Pico"]="pico" ["GAPPS_VAR,Full"]="full" ["REMOVE_AMAZON,true"]="--remove-amazon" ["NOFIX_PROPS,true"]="--nofix-props" ["SKIP_DOWNLOAD_WSA,true"]="--skip-download-wsa" ["COMPRESSION,ZIP"]="zip" ["COMPRESSION,7-Zip"]="7z" ["COMPRESSION,XZ"]="xz" )
 
                   ARCH="${opts[ARCH,${{ inputs.arch }}]}"
 
@@ -115,9 +121,9 @@ jobs:
                       if [[ "${{ inputs.magisk_ver }}" != "Custom" ]]; then
                           MAGISK_VER="${opts[MAGISK_VER,${{ inputs.magisk_ver }}]}"
                       else
-                          echo "${{ inputs.magisk_url }}" > "$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"
+                          echo -e "${{ inputs.magisk_url }}\n out=magisk-debug.zip" > "$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"
 
-                          if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_custom_magisk_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity --continue --allow-overwrite --conditional-get -d"$DOWNLOAD_DIR" -o magisk-debug.zip -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"; then
+                          if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_custom_magisk_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity --continue --allow-overwrite --conditional-get -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"; then
                               echo "Magisk download error!"
                               exit 1
                           fi
@@ -184,8 +190,8 @@ jobs:
                                   echo "opengapps_var=${GAPPS_VAR^}" >> $GITHUB_ENV
                               else
                                   GAPPS_VAR="pico"
-                                  echo "${{ inputs.gapps_url }}" > -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"
-                                  if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_gapps_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity --continue --allow-overwrite --conditional-get -d"$DOWNLOAD_DIR" -o OpenGApps-"$ARCH"-"$GAPPS_VAR".zip -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"; then
+                                  echo -e "${{ inputs.gapps_url }}\n out=OpenGApps-"$ARCH"-"$GAPPS_VAR".zip" > -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"
+                                  if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_gapps_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity --continue --allow-overwrite --conditional-get -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"; then
                                       echo "OpenGApps download error!"
                                       exit 1
                                   fi
@@ -197,9 +203,9 @@ jobs:
                           GAPPS_BRAND="MindTheGapps"
                           if [[ "${{ inputs.gapps_var }}" == "Custom (MindTheGapps)" ]]; then
                               if [[ -n "${${{ inputs.gapps_url }}+x}" ]]; then
-                                  echo "${{ inputs.gapps_url }}" > -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"
+                                  echo -e "${{ inputs.gapps_url }}\n out=MindTheGapps-"$ARCH".zip" > -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"
 
-                                  if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_gapps_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity --continue --allow-overwrite --conditional-get -d"$DOWNLOAD_DIR" -o MindTheGapps-"$ARCH".zip -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"; then
+                                  if ! aria2c --no-conf --log-level=info --log="$DOWNLOAD_DIR/aria2_gapps_download.log" -x16 -s16 -j5 -c -R -m0 --async-dns=false --check-integrity --continue --allow-overwrite --conditional-get -d"$DOWNLOAD_DIR" -i"$DOWNLOAD_DIR"/"$DOWNLOAD_CONF_NAME"; then
                                       echo "MindTheGapps download error!"
                                       exit 1
                                   fi
@@ -214,6 +220,8 @@ jobs:
                   REMOVE_AMAZON="${opts[REMOVE_AMAZON,${{ inputs.remove_amazon }}]}"
 
                   NOFIX_PROPS="${opts[NOFIX_PROPS,${{ inputs.nofix_props }}]}"
+
+                  SKIP_DOWNLOAD_WSA="${opts[SKIP_DOWNLOAD_WSA,${{ inputs.skip_download_wsa }}]}"
 
                   COMPRESSION="--compress --compress-format ${opts[COMPRESSION,${{ inputs.compression }}]}"
 
@@ -232,7 +240,7 @@ jobs:
                       OFFLINE="--offline"
                   fi
 
-                  COMMAND_LINE=(--arch "$ARCH" --release-type "$RELEASE_TYPE" --root-sol "$ROOT_SOL" --magisk-ver "$MAGISK_VER" "$CUSTOM_MAGISK" --gapps-brand "$GAPPS_BRAND" --gapps-variant "$GAPPS_VAR" "$COMPRESSION" "$REMOVE_AMAZON" "$NOFIX_PROPS" "$OFFLINE")
+                  COMMAND_LINE=(--arch "$ARCH" --release-type "$RELEASE_TYPE" --root-sol "$ROOT_SOL" --magisk-ver "$MAGISK_VER" "$CUSTOM_MAGISK" --gapps-brand "$GAPPS_BRAND" --gapps-variant "$GAPPS_VAR" "$COMPRESSION" "$REMOVE_AMAZON" "$NOFIX_PROPS" "$SKIP_DOWNLOAD_WSA" "$OFFLINE")
                   echo "COMMAND_LINE=${COMMAND_LINE[*]}"
 
                   chmod +x ./build.sh
@@ -247,7 +255,7 @@ jobs:
                   elif [[ "${{ inputs.magisk_ver }}" == "Custom" ]]; then
                       magiskVer="_Magisk-Custom"
                   else
-                      magiskVer="_Magisk-$(curl -s https://raw.githubusercontent.com/topjohnwu/magisk-files/master/${magisk_vers[${{ inputs.magisk_ver }}]}.json | jq -r ".magisk.version")"
+                      magiskVer="_Magisk-${{ env.MAGISK_VERSION }}"
                   fi
                   export magiskVer
 
